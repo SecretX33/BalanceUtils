@@ -138,7 +138,7 @@ end
 local function cancelingSolarWontBreakRotation()
    if not isPlayerUnderSolar() or cancelEclipseEvenIfItBreakRotation then return true end
 
-   local logic = ((solarCD - getSpellCastTime(STARFIRE_ID)) <= (GetTime() + 15))
+   local logic = ((solarCD - getSpellCastTime(STARFIRE_ID)) < (GetTime() + 15))
    if buDebug then send("Canceling Solar won't make us waste time casting Starfire without buff = " .. tostring(logic)) end
    if logic then return true else return false end
 end
