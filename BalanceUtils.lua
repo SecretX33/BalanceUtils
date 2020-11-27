@@ -91,6 +91,12 @@ local function doesUnitHaveThisBuff(unit, buff)
    if UnitBuff(unit,buff)~=nil then return true else return false end
 end
 
+-- This function guarantee that if the player start the boss with Starfire for whatever reason, it will not cancel his first eclipse solar
+local function didPlayerGetLunarAtLeastOnce()
+   --if buDebug then send("did player get lunar at least once? " .. tostring(gainedLunarTime~=0)) end
+   return gainedLunarTime~=0
+end
+
 local function isPlayerUnderBL()
    return doesUnitHaveThisBuff("player", HEROISM)
 end
@@ -138,6 +144,7 @@ function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, src
    elseif event == "SPELL_CAST_START" then
       if buDebug and spellID == WRATH_ID then send("started casting " .. GetSpellLink(WRATH_ID) .. " at " .. GetTime()) end
 
+      --if spellID == WRATH_ID and isPlayerUnderSolar() and didPlayerGetLunarAtLeastOnce() and ((GetTime() + getSpellCastTime(WRATH_ID)) >= lunarCD) then
       if spellID == WRATH_ID and isPlayerUnderSolar() and ((GetTime() + getSpellCastTime(WRATH_ID)) >= lunarCD) then
          if (not isPlayerUnderBL() and not cancelEclipseOnlyIfUnderBL) or (isPlayerUnderBL() and cancelEclipseIfUnderBL) then
             if buDebug then 
