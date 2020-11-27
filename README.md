@@ -9,4 +9,20 @@ It cancels druid buff Eclipse (Solar) when the next Wrath is already able to pro
 /bu /balanceutils
 
 ## Download
-You can download it [click here](https://github.com/SecretX33/BalanceUtils/releases/latest/download/BalanceUtils.zip).
+
+You can download the lastest version by [clicking here](https://github.com/SecretX33/BalanceUtils/releases/latest/download/BalanceUtils.zip).
+
+
+## Reporting issues
+
+Issues can be reported via the Github [issue tracker](https://github.com/SecretX33/BalanceUtils/labels/Branch-master).
+
+Please take the time to review existing issues before submitting your own to
+prevent duplicates. Incorrect or poorly formed
+reports are wasteful and are subject to deletion.
+
+## Copyright
+
+License: AGPL 3.0
+
+Read file [LICENSE](LICENSE).
