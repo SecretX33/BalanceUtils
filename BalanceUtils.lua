@@ -183,7 +183,7 @@ local function unregFromAllEvents(ref)
    ref:UnregisterEvent("PLAYER_TALENT_UPDATE")
 end
 
--- Checks if addon should be enabled, and enable it if isn't enabled, and disable if it should not de enabled
+-- Checks if addon should be enabled, and enable it if isn't enabled, and disable if it should not be enabled
 local function checkIfAddonShouldBeEnabled(ref)
    if(ref==nil) then send ("ref came nil inside function that check if this addon should be enabled, report this"); return; end
    local _, instance = IsInInstance()
@@ -215,7 +215,7 @@ function BalanceUtils:ADDON_LOADED(addon)
       return
    end
 
-   groupTalentsLib = LibStub("LibGroupTalents-1.0")
+   groupTalentsLib = LibStub("LibGroupTalents-1.0")  -- Importing LibGroupTalents so I can use it later by using groupTalentsLib variable
    BalanceUtilsDB = BalanceUtilsDB or { enabled = true } -- DB just stores if addon is turned on or off
    self.db = BalanceUtilsDB
    SLASH_BALANCEUTILS1 = "/bu"
