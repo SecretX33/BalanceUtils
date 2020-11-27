@@ -1,3 +1,5 @@
+# You can find updates in https://github.com/SecretX33/BalanceUtils
+#
 ## Interface: 30300
 ## Title: BalanceUtils
 ## Notes: Cancel the buff Eclipse (Solar) if Eclipse (Lunar) is able to proc, simple yet very effective. No in-game options, configuration via Lua.
