@@ -4,9 +4,9 @@
 ## Title: BalanceUtils
 ## Notes: Cancel the buff Eclipse (Solar) if Eclipse (Lunar) is able to proc, simple yet very effective. No in-game options, configuration via Lua.
 ## Author: SecretX (Freezingice)
-## Version: 1.0.1
+## Version: 1.0.2
 ## SavedVariables: BalanceUtilsDB
-## OptDeps: BugSack, !Swatter
+## OptionalDeps: BugSack, !Swatter
 ## X-Category: Combat Assist
 ## X-Date: 11/26/2020
 

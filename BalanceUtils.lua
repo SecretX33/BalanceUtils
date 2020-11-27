@@ -1,10 +1,11 @@
 local BalanceUtils = CreateFrame("frame")
 
 -- Configurations
-local showCancelMessage            = true   -- default is true
-local turnAddonOnOnlyInRaidOrParty = false  -- default is false
-local cancelEclipseIfUnderBL       = true   -- default is true
-local cancelEclipseOnlyIfUnderBL   = false  -- default is false
+local showCancelMessage                  = true   -- default is true
+local turnAddonOnOnlyInRaidOrParty       = false  -- default is false
+local cancelEclipseIfUnderBL             = true   -- default is true
+local cancelEclipseOnlyIfUnderBL         = false  -- default is false
+local cancelEclipseEvenIfItBreakRotation = false  -- default is false
 
 -- Don't touch anything below
 local buDebug           = false    -- BalanceUtils debug messages
@@ -16,12 +17,14 @@ local ECLIPSE_LUNAR_ID  = 48518
 local ECLIPSE_LUNAR     = GetSpellInfo(ECLIPSE_LUNAR_ID)
 local WRATH_ID          = 48461
 local WRATH             = GetSpellInfo(WRATH_ID)
+local STARFIRE_ID       = 48465
+local STARFIRE          = GetSpellInfo(STARFIRE_ID)
 
-local gainedLunarTime   = 0       -- When eclipse lunar was gained
-local lunarCD           = 0       -- When Eclipse Lunar will be able to proc again
-local gainedSolarTime   = 0       -- When eclipse solar was gained
-local solarCD           = 0       -- When Eclipse Solar will be able to proc again
-local gainedBL          = 0       -- When bloodlust was gained
+local gainedLunarTime   = 0       -- When Lunar Eclipse was gained
+local lunarCD           = 0       -- When Lunar Eclipse will be able to proc again
+local gainedSolarTime   = 0       -- When Solar Eclipse was gained
+local solarCD           = 0       -- When Solar Eclipse will be able to proc again
+local gainedBL          = 0       -- When Bloodlust was gained
 local whenBLWilFade     = 0       -- Expiration time for BL
 
 local groupTalentsLib
@@ -61,7 +64,7 @@ local function getSpellCastTime(spell)
    -- [API_GetSpellInfo] index 7 is the cast time, in milliseconds
    local castTime = select(7, GetSpellInfo(spell))
    if castTime~=nil then 
-      if buDebug then send("cast time for spell " .. getSpellName(spell) .. " queued, value is " .. castTime/1000) end
+      --if buDebug then send("cast time for spell " .. getSpellName(spell) .. " queued, value is " .. castTime/1000) end
       return castTime/1000
    else 
       if buDebug then send("cast time for spell " .. getSpellName(spell) .. " is nil for some unknown reason") end
@@ -91,7 +94,7 @@ local function doesUnitHaveThisBuff(unit, buff)
    if UnitBuff(unit,buff)~=nil then return true else return false end
 end
 
--- This function guarantee that if the player start the boss with Starfire for whatever reason, it will not cancel his first eclipse solar
+-- This function guarantee that if the player start the boss with Starfire for whatever reason, it will not cancel his first solar eclipse. Tecnically, the function cancelingSolarWontBreakRotation also do this job, but if player turns on the variable "cancelEclipseEvenIfItBreakRotation" then that function won't prevent this problem from happening aswell, hence why the function below is used.
 local function didPlayerGetLunarAtLeastOnce()
    --if buDebug then send("did player get lunar at least once? " .. tostring(gainedLunarTime~=0)) end
    return gainedLunarTime~=0
@@ -109,6 +112,37 @@ local function isPlayerUnderSolar()
    return doesUnitHaveThisBuff("player", ECLIPSE_SOLAR)
 end
 
+local function willLunarBeOutOfCDWhenWrathCastFinish()
+   return ((GetTime() + getSpellCastTime(WRATH_ID)) >= lunarCD)
+end
+
+-- Bad situation example
+-- gainedLunar  = 70 | 85
+-- gainedSolar  = 95 | 110
+-- now          = 100   < canceled solar
+-- lunarCD      = 100
+-- gainedLunar2 = 100 | 115
+-- lunarCD2     = 130
+-- solarCD      = 125
+
+-- Perfect situation example
+-- gainedLunar  = 0  | 15
+-- gainedSolar  = 15 | 30
+-- now          = 15   < calls function below
+-- lunarCD      = 30
+-- gainedLunar2 = 30 | 45
+-- solarCD      = 45
+-- lunarCD2     = 60
+
+-- If Lunar Eclipse is CD and willLunarBeOutOfCDWhenWrathCastFinish() returns false then there is no point in calling this function, remember this when using it
+local function cancelingSolarWontBreakRotation()
+   if not isPlayerUnderSolar() or cancelEclipseEvenIfItBreakRotation then return true end
+
+   local logic = ((solarCD - getSpellCastTime(STARFIRE_ID)) <= (GetTime() + 15))
+   if buDebug then send("Canceling Solar won't make us waste time casting Starfire without buff = " .. tostring(logic)) end
+   if logic then return true else return false end
+end
+
 local function isBalance()
    local playerClass = select(2,UnitClass("player"))
    if playerClass~="DRUID" then return false end
@@ -124,7 +158,6 @@ end
 -- Logic functions are under here
 function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, srcName, srcFlags, destGUID, destName, destFlags, spellID, spellName, school, ...)
    if srcName ~= UnitName("player") and destName ~= UnitName("player") then return end -- The event if NOT from the player, so that is not relevant
-   -- if not UnitAffectingCombat("player") then return end -- Player is not in combat, so that's also not relevant
 
    if event == "SPELL_AURA_APPLIED" then
       if spellID == ECLIPSE_LUNAR_ID then
@@ -136,21 +169,20 @@ function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, src
          if buDebug then send("you just gained " .. GetSpellLink(ECLIPSE_SOLAR_ID) .. ", darn imagine if it was Lunar instead...") end
          gainedSolarTime = GetTime()
          whenSolarWillFade = gainedSolarTime + getBuffExpirationTime("player", ECLIPSE_SOLAR)
-         solarCD = gainedLunarTime + 30
+         solarCD = gainedSolarTime + 30
       elseif spellID == HEROISM_ID and buDebug then
          send(srcName .. " casted " .. GetSpellLink(HEROISM_ID) .. ", go for the neck!")
       end
 
    elseif event == "SPELL_CAST_START" then
-      if buDebug and spellID == WRATH_ID then send("started casting " .. GetSpellLink(WRATH_ID) .. " at " .. GetTime()) end
+      --if buDebug and spellID == WRATH_ID then send("started casting " .. GetSpellLink(WRATH_ID) .. " at " .. GetTime()) end
 
-      --if spellID == WRATH_ID and isPlayerUnderSolar() and didPlayerGetLunarAtLeastOnce() and ((GetTime() + getSpellCastTime(WRATH_ID)) >= lunarCD) then
-      if spellID == WRATH_ID and isPlayerUnderSolar() and ((GetTime() + getSpellCastTime(WRATH_ID)) >= lunarCD) then
+      if spellID == WRATH_ID and isPlayerUnderSolar() and didPlayerGetLunarAtLeastOnce() and willLunarBeOutOfCDWhenWrathCastFinish() and cancelingSolarWontBreakRotation() then
          if (not isPlayerUnderBL() and not cancelEclipseOnlyIfUnderBL) or (isPlayerUnderBL() and cancelEclipseIfUnderBL) then
             if buDebug then 
-               send("Canceling Eclipse Solar at " .. GetTime())
+               send("Canceling Solar Eclipse at " .. GetTime())
             elseif showCancelMessage then 
-               send("Canceling the Eclipse Solar because Eclipse Lunar CD is over already.") 
+               send("Solar Eclipse is going to be canceled.") 
             end
             CancelUnitBuff("player", ECLIPSE_SOLAR);
          end
