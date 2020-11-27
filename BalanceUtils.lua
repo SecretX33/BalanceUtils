@@ -143,7 +143,7 @@ function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, src
             if buDebug then 
                send("Canceling Eclipse Solar at " .. GetTime())
             elseif showCancelMessage then 
-               send("Canceling the Eclipse Solar because Lunar CD is out already.") 
+               send("Canceling the Eclipse Solar because Eclipse Lunar CD is over already.") 
             end
             CancelUnitBuff("player", ECLIPSE_SOLAR);
          end
