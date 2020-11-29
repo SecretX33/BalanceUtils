@@ -26,7 +26,8 @@ local lunarCD           = 0       -- When Lunar Eclipse will be able to proc aga
 local gainedSolarTime   = 0       -- When Solar Eclipse was gained
 local solarCD           = 0       -- When Solar Eclipse will be able to proc again
 --local gainedBL          = 0       -- When Bloodlust was gained
---local whenBLWillFade     = 0       -- Expiration time for BL
+--local whenBLWillFade    = 0       -- Expiration time for BL
+local sentMessageTime   = 0       -- Last time the cancelMessage were sent
 
 local groupTalentsLib
 local addonPrefix = "|cffff9500BalanceUtils:|r %s"
@@ -135,7 +136,7 @@ local function cancelingSolarWontBreakRotation()
 
    local logic = ((solarCD - getSpellCastTime(STARFIRE_ID)) < (GetTime() + 15))
    if buDebug then send("Canceling Solar won't make us waste time casting Starfire without buff = " .. tostring(logic)) end
-   if logic then return true else return false end
+   return logic
 end
 
 local function isBalance()
@@ -151,6 +152,20 @@ local function isBalance()
 end
 
 -- Logic functions are under here
+local function checkIfShouldCancelSolarEclipse()
+   if isPlayerUnderSolar() and didPlayerGetLunarAtLeastOnce() and willLunarBeOutOfCDWhenWrathCastFinish() and cancelingSolarWontBreakRotation() then
+      if (not isPlayerUnderBL() and not cancelEclipseOnlyIfUnderBL) or (isPlayerUnderBL() and cancelEclipseIfUnderBL) then
+         if buDebug then
+            send("Canceling Solar Eclipse at " .. GetTime())
+         elseif showCancelMessage and (GetTime() > (sentMessageTime + 2)) then  -- the GetTime here prevent sending the cancel message two times within 2 seconds of each other, a "just in case" check
+            sentMessageTime = GetTime()
+            send(cancelMessage)
+         end
+         CancelUnitBuff("player", SOLAR_ECLIPSE);
+      end
+   end
+end
+
 function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, srcName, srcFlags, destGUID, destName, destFlags, spellID, spellName, ...)
    if srcName ~= UnitName("player") and destName ~= UnitName("player") then return end -- The event if NOT from the player, so that is not relevant
 
@@ -169,20 +184,9 @@ function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, src
          send(srcName .. " casted " .. GetSpellLink(HEROISM_ID) .. ", go for the neck!")
       end
 
-   elseif event == "SPELL_CAST_START" then
-      --if buDebug and spellID == WRATH_ID then send("started casting " .. GetSpellLink(WRATH_ID) .. " at " .. GetTime()) end
-
-      if spellID == WRATH_ID and isPlayerUnderSolar() and didPlayerGetLunarAtLeastOnce() and willLunarBeOutOfCDWhenWrathCastFinish() and cancelingSolarWontBreakRotation() then
-         if (not isPlayerUnderBL() and not cancelEclipseOnlyIfUnderBL) or (isPlayerUnderBL() and cancelEclipseIfUnderBL) then
-            if buDebug then 
-               send("Canceling Solar Eclipse at " .. GetTime())
-            elseif showCancelMessage then 
-               send(cancelMessage)
-            end
-            CancelUnitBuff("player", SOLAR_ECLIPSE);
-         end
-      end
-   end   
+   elseif spellID == WRATH_ID and srcName == UnitName("player") and (event == "SPELL_CAST_START" or event == "SPELL_DAMAGE" or event == "SPELL_MISSED") then
+      checkIfShouldCancelSolarEclipse()
+   end
 end
 
 -- Called when player leaves combat
@@ -196,6 +200,7 @@ function BalanceUtils:PLAYER_REGEN_ENABLED()
       lunarCD         = 0
       gainedSolarTime = 0
       solarCD         = 0
+      sentMessageTime = 0
    end
 end
 
