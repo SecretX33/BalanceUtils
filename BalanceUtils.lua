@@ -2,6 +2,7 @@ local BalanceUtils = CreateFrame("frame")
 
 -- Configurations
 local showCancelMessage                  = true   -- default is true
+local cancelMessage                      = "Canceling Solar Eclipse."
 local turnAddonOnOnlyInRaidOrParty       = false  -- default is false
 local cancelEclipseIfUnderBL             = true   -- default is true
 local cancelEclipseOnlyIfUnderBL         = false  -- default is false
@@ -11,28 +12,27 @@ local cancelEclipseEvenIfItBreakRotation = false  -- default is false
 local buDebug           = false    -- BalanceUtils debug messages
 local HEROISM_ID        = UnitFactionGroup("player") == "Horde" and 2825 or 32182   -- Horde = "Bloodlust" (2825) / Alliance = "Heroism" (32182)
 local HEROISM           = GetSpellInfo(HEROISM_ID) 
-local ECLIPSE_SOLAR_ID  = 48517
-local ECLIPSE_SOLAR     = GetSpellInfo(ECLIPSE_SOLAR_ID)
-local ECLIPSE_LUNAR_ID  = 48518
-local ECLIPSE_LUNAR     = GetSpellInfo(ECLIPSE_LUNAR_ID)
+local SOLAR_ECLIPSE_ID  = 48517
+local SOLAR_ECLIPSE     = GetSpellInfo(SOLAR_ECLIPSE_ID)
+local LUNAR_ECLIPSE_ID  = 48518
+local LUNAR_ECLIPSE     = GetSpellInfo(LUNAR_ECLIPSE_ID)
 local WRATH_ID          = 48461
-local WRATH             = GetSpellInfo(WRATH_ID)
+--local WRATH             = GetSpellInfo(WRATH_ID)
 local STARFIRE_ID       = 48465
-local STARFIRE          = GetSpellInfo(STARFIRE_ID)
+--local STARFIRE          = GetSpellInfo(STARFIRE_ID)
 
 local gainedLunarTime   = 0       -- When Lunar Eclipse was gained
 local lunarCD           = 0       -- When Lunar Eclipse will be able to proc again
 local gainedSolarTime   = 0       -- When Solar Eclipse was gained
 local solarCD           = 0       -- When Solar Eclipse will be able to proc again
-local gainedBL          = 0       -- When Bloodlust was gained
-local whenBLWilFade     = 0       -- Expiration time for BL
+--local gainedBL          = 0       -- When Bloodlust was gained
+--local whenBLWillFade     = 0       -- Expiration time for BL
 
 local groupTalentsLib
 local addonPrefix = "|cffff9500BalanceUtils:|r %s"
 
 -- Upvalues
 local UnitInRaid, UnitAffectingCombat = UnitInRaid, UnitAffectingCombat
-local UnitHealthMax, UnitManaMax = UnitHealthMax, UnitManaMax
 local GetSpellLink, UnitAffectingCombat, format = GetSpellLink, UnitAffectingCombat, string.format
 
 BalanceUtils:SetScript("OnEvent", function(self, event, ...)
@@ -43,11 +43,6 @@ end)
 local function send(msg)
    print(addonPrefix:format(msg))
    -- DEFAULT_CHAT_FRAME:AddMessage(msg, 1, 1, 1)
-end
-
-local function icon(name)
-   local n = GetRaidTargetIndex(name)
-   return n and format("{rt%d}", n) or ""
 end
 
 local function getSpellName(spellID)
@@ -80,18 +75,18 @@ local function getBuffExpirationTime(unit, buff)
 
    -- "API select" pull all the remaining returns from a given function or API starting from that index, the first valid number is 1
    -- [API_UnitBuff] index 7 is the absolute time (client time) when the buff will expire, in seconds
-   
+
    local now = GetTime()
    local expirationAbsTime = select(7, UnitBuff(unit, buff))
 
-   local myReturn = expirationAbsTime - now
-   if myReturn~=nil then return myReturn else return 0 end
+   if expirationAbsTime~=nil then return (expirationAbsTime - now) end
+   return 0
 end
 
 local function doesUnitHaveThisBuff(unit, buff)
    if(unit==nil or buff==nil) then return false end
 
-   if UnitBuff(unit,buff)~=nil then return true else return false end
+   return UnitBuff(unit,buff)~=nil
 end
 
 -- This function guarantee that if the player start the boss with Starfire for whatever reason, it will not cancel his first solar eclipse. Tecnically, the function cancelingSolarWontBreakRotation also do this job, but if player turns on the variable "cancelEclipseEvenIfItBreakRotation" then that function won't prevent this problem from happening aswell, hence why the function below is used.
@@ -105,11 +100,11 @@ local function isPlayerUnderBL()
 end
 
 local function isPlayerUnderLunar()
-   return doesUnitHaveThisBuff("player", ECLIPSE_LUNAR)
+   return doesUnitHaveThisBuff("player", LUNAR_ECLIPSE)
 end
 
 local function isPlayerUnderSolar()
-   return doesUnitHaveThisBuff("player", ECLIPSE_SOLAR)
+   return doesUnitHaveThisBuff("player", SOLAR_ECLIPSE)
 end
 
 local function willLunarBeOutOfCDWhenWrathCastFinish()
@@ -156,19 +151,19 @@ local function isBalance()
 end
 
 -- Logic functions are under here
-function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, srcName, srcFlags, destGUID, destName, destFlags, spellID, spellName, school, ...)
+function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, srcName, srcFlags, destGUID, destName, destFlags, spellID, spellName, ...)
    if srcName ~= UnitName("player") and destName ~= UnitName("player") then return end -- The event if NOT from the player, so that is not relevant
 
    if event == "SPELL_AURA_APPLIED" then
-      if spellID == ECLIPSE_LUNAR_ID then
-         if buDebug then send("you just gained " .. GetSpellLink(ECLIPSE_LUNAR_ID) .. ", very noice!") end
+      if spellID == LUNAR_ECLIPSE_ID then
+         if buDebug then send("you just gained " .. GetSpellLink(LUNAR_ECLIPSE_ID) .. ", very noice!") end
          gainedLunarTime = GetTime()
-         whenLunarWillFade = gainedLunarTime + getBuffExpirationTime("player", ECLIPSE_LUNAR)
+         whenLunarWillFade = gainedLunarTime + getBuffExpirationTime("player", LUNAR_ECLIPSE)
          lunarCD = gainedLunarTime + 30
-      elseif spellID == ECLIPSE_SOLAR_ID then
-         if buDebug then send("you just gained " .. GetSpellLink(ECLIPSE_SOLAR_ID) .. ", darn imagine if it was Lunar instead...") end
+      elseif spellID == SOLAR_ECLIPSE_ID then
+         if buDebug then send("you just gained " .. GetSpellLink(SOLAR_ECLIPSE_ID) .. ", darn imagine if it was Lunar instead...") end
          gainedSolarTime = GetTime()
-         whenSolarWillFade = gainedSolarTime + getBuffExpirationTime("player", ECLIPSE_SOLAR)
+         whenSolarWillFade = gainedSolarTime + getBuffExpirationTime("player", SOLAR_ECLIPSE)
          solarCD = gainedSolarTime + 30
       elseif spellID == HEROISM_ID and buDebug then
          send(srcName .. " casted " .. GetSpellLink(HEROISM_ID) .. ", go for the neck!")
@@ -182,16 +177,16 @@ function BalanceUtils:COMBAT_LOG_EVENT_UNFILTERED(timestamp, event, srcGUID, src
             if buDebug then 
                send("Canceling Solar Eclipse at " .. GetTime())
             elseif showCancelMessage then 
-               send("Solar Eclipse is going to be canceled.") 
+               send(cancelMessage)
             end
-            CancelUnitBuff("player", ECLIPSE_SOLAR);
+            CancelUnitBuff("player", SOLAR_ECLIPSE);
          end
       end
    end   
 end
 
 -- Called when player leaves combat
--- It is just where for that "just in case" GetTime() decides to start from 0 again
+-- Used to zero all variables so the addon logic knows that, when player enters combat again, it's a new fight against a new enemy
 function BalanceUtils:PLAYER_REGEN_ENABLED()
    local _, instance = IsInInstance()
 
@@ -204,34 +199,34 @@ function BalanceUtils:PLAYER_REGEN_ENABLED()
    end
 end
 
-local function regForAllEvents(ref)
-   if(ref==nil) then send ("ref came nil inside function that register for all events function, report this"); return; end
+local function regForAllEvents()
+   if(BalanceUtils==nil) then send("frame is nil inside function that register for all events function, report this"); return; end
    if buDebug then send("addon is now listening to all combatlog events.") end
 
-   ref:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-   ref:RegisterEvent("PLAYER_REGEN_ENABLED")
-   ref:RegisterEvent("PLAYER_TALENT_UPDATE")
+   BalanceUtils:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+   BalanceUtils:RegisterEvent("PLAYER_REGEN_ENABLED")
+   BalanceUtils:RegisterEvent("PLAYER_TALENT_UPDATE")
 end
 
-local function unregFromAllEvents(ref)
-   if(ref==nil) then send ("ref came nil inside function that unregister all events function, report this"); return; end
+local function unregFromAllEvents()
+   if(BalanceUtils==nil) then send("frame is nil inside function that unregister all events function, report this"); return; end
    if buDebug then send("addon is no longer listening to combatlog events.") end
 
-   ref:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-   ref:UnregisterEvent("PLAYER_REGEN_ENABLED")
-   ref:UnregisterEvent("PLAYER_TALENT_UPDATE")
+   BalanceUtils:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+   BalanceUtils:UnregisterEvent("PLAYER_REGEN_ENABLED")
+   BalanceUtils:UnregisterEvent("PLAYER_TALENT_UPDATE")
 end
 
 -- Checks if addon should be enabled, and enable it if isn't enabled, and disable if it should not be enabled
-local function checkIfAddonShouldBeEnabled(ref)
-   if(ref==nil) then send ("ref came nil inside function that check if this addon should be enabled, report this"); return; end
+local function checkIfAddonShouldBeEnabled()
+   if(BalanceUtils==nil) then send("frame came nil inside function that check if this addon should be enabled, report this"); return; end
    local _, instance = IsInInstance()
 
    -- Check if user disabled the addon, if the player is using Balance spec and also if he is a raid or party or he doesn't care about this
-   if ref.db.enabled and isBalance() and (not turnAddonOnOnlyInRaidOrParty or (turnAddonOnOnlyInRaidOrParty and (instance=="raid" or instance=="party"))) then
-      regForAllEvents(ref)
+   if BalanceUtils.db.enabled and isBalance() and (not turnAddonOnOnlyInRaidOrParty or (turnAddonOnOnlyInRaidOrParty and (instance=="raid" or instance=="party"))) then
+      regForAllEvents()
    else
-      unregFromAllEvents(ref)
+      unregFromAllEvents()
    end
 end
 
@@ -262,11 +257,11 @@ function BalanceUtils:ADDON_LOADED(addon)
    SlashCmdList.BALANCEUTILS = function()
       if not self.db.enabled then
          self.db.enabled = true
-         checkIfAddonShouldBeEnabled(self)
+         checkIfAddonShouldBeEnabled()
          send("|cff00ff00on|r")
       else
          self.db.enabled = false
-         checkIfAddonShouldBeEnabled(self)
+         checkIfAddonShouldBeEnabled()
          send("|cffff0000off|r")
       end
    end
