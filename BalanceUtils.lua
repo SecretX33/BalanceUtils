@@ -271,6 +271,7 @@ function BalanceUtils:ADDON_LOADED(addon)
       end
    end
    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+   self:UnregisterEvent("ADDON_LOADED")
 end
 
 BalanceUtils:RegisterEvent("ADDON_LOADED")
