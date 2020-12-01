@@ -8,7 +8,7 @@
 ## SavedVariables: BalanceUtilsDB
 ## OptionalDeps: BugSack, !Swatter
 ## X-Category: Combat Assist
-## X-Date: 11/29/2020
+## X-Date: 12/01/2020
 
 embeds.xml
 BalanceUtils.lua
