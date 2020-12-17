@@ -98,6 +98,10 @@ local function didPlayerGetLunarAtLeastOnce()
    return gainedLunarTime~=0
 end
 
+local function isLunarCD()
+   return (lunarCD~=0 and (GetTime() < lunarCD))
+end
+
 local function isPlayerUnderBL()
    return doesUnitHaveThisBuff("player", HEROISM)
 end
@@ -165,7 +169,7 @@ local function getSpellDamage(spellID)
    --   send(select(1,GetSpellInfo(spellID)) .. " hit is " .. hit)
    --   send(select(1,GetSpellInfo(spellID)) .. " crit is " .. crit)
    --end
-   return math.floor(hit * (1 - critChance) + (crit * critChance))
+   return math.floor(((hit * (1 - critChance)) + (crit * critChance)))
 end
 
 local function getSpellDPS(spellID)
@@ -203,7 +207,7 @@ local function cancelingSolarWontBreakRotation()
 end
 
 local function advisePlayerAboutStarfire()
-   if(isPlayerUnderBL() or buDebug) and (getSpellDPS(STARFIRE_ID) > getSpellDPS(WRATH_ID) and (GetTime() > (advisedPlayerAboutStarfire + 3))) then
+   if(isPlayerUnderBL() or buDebug) and not isPlayerUnderLunar() and didPlayerGetLunarAtLeastOnce() and isLunarCD() and (getSpellDPS(STARFIRE_ID) > getSpellDPS(WRATH_ID) and (GetTime() > (advisedPlayerAboutStarfire + 3))) then
       send("Please ignore Wrath, Starfire will give you more DPS!")
       advisedPlayerAboutStarfire = GetTime()
    end
