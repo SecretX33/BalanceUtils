@@ -1,3 +1,10 @@
+--[[------------------------------------------------------------+
+|   BalanceUtils                                                |
+|   --> Increase your DPS by canceling Solar Eclipse            |
+|   Author: SecretX (Freezingice @ WoW Brasil)                  |
+|   Contact: notyetmidnight@gmail.com                           |
++--------------------------------------------------------------]]
+
 local BalanceUtils = CreateFrame("frame")
 
 -- Configurations
